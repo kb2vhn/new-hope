@@ -1,6 +1,6 @@
 # Validation and Test Records
 
-New Hope is currently a **documentation-only repository scaffold**. The repository integrity check tests that required files exist. It does **not** build, boot or validate an OS.
+New Hope currently contains **documentation and component placeholders, not a working kernel**. The repository integrity check tests that required files exist. It does **not** build, boot, or validate an OS.
 
 ## Engineering test discipline
 

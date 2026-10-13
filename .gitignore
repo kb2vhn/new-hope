@@ -1,0 +1,41 @@
+# Rust/Cargo and build output
+/target/
+**/target/
+*.rlib
+*.rmeta
+*.dSYM/
+
+# Kernel, emulator and disk-image artifacts
+*.iso
+*.img
+*.qcow2
+*.vmdk
+*.vdi
+*.efi
+*.bin
+*.elf
+*.map
+*.core
+core
+
+# Local test traces and machine-specific settings
+*.log
+*.pcap
+*.pcapng
+*.swp
+*.swo
+*~
+.env
+.env.*
+!.env.example
+.idea/
+.vscode/
+.DS_Store
+
+# Private cryptographic material
+*.key
+*.pem
+*.p12
+*.pfx
+id_rsa*
+id_ed25519*

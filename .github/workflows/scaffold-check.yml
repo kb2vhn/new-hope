@@ -1,0 +1,16 @@
+name: Repository scaffold check
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  documentation-integrity:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Verify required project documentation
+        run: sh tools/verify-scaffold.sh
+      - name: Clarify scope
+        run: echo 'Documentation integrity only; no kernel build, boot, isolation or security tests were run.'

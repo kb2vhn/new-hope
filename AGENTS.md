@@ -2,7 +2,7 @@
 
 ## Purpose and precedence
 
-This file governs coding agents, reviewers, automation, and human contributions to **New Hope**. It borrows FI's disciplined approach to architecture, testing, failure reporting, documentation, and GitHub authorization. It is **specific to New Hope**; FI's Windows/file-intelligence implementation rules do not apply here.
+This file governs coding agents, reviewers, automation, and human contributions to **New Hope**. It is New Hope's independent engineering, documentation, security, testing, and change-control contract.
 
 Before a material change read, at minimum:
 
@@ -127,7 +127,7 @@ Never claim a GitHub write succeeded based on a local file, tool request, or opt
 
 ## Repository hygiene and review
 
-Do not commit private keys, tokens, local disk images, NVMe dumps, user-specific machine state, huge kernel/QEMU traces, Rust `target/`, build outputs, editor swapfiles, or machine-specific configuration. Do not copy FI code, configuration, or company materials into this personal project without explicit direction and applicable rights.
+Do not commit private keys, tokens, local disk images, NVMe dumps, user-specific machine state, huge kernel/QEMU traces, Rust `target/`, build outputs, editor swapfiles, or machine-specific configuration. Do not import unrelated code, configuration, or third-party materials without proper rights and explicit justification.
 
 Review every proposed change for:
 

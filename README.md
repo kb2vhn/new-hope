@@ -4,7 +4,7 @@
 
 UMI takes its security model from a **next-generation firewall**: kernel-authenticated caller identity, endpoint and operation authorization, state, resource bounds, default deny, and auditable decisions. Calls are network-like in structure, but local IPC does **not** require TCP/IP.
 
-**Status:** architecture documented; repository scaffold prepared. **No bootable kernel, runtime tests, or acceptance gates have been completed.** The remote repository has not yet received this scaffold because GitHub refused the initial write.
+**Status:** initial project scaffold published to `main`; architecture documented. **No bootable kernel, runtime tests, or acceptance gates have been completed.**
 
 ## Documentation
 
@@ -24,6 +24,6 @@ The first executable acceptance test will be a freestanding kernel booting under
 
 ## Ownership and licensing
 
-This project belongs under the personal GitHub account [kb2vhn](https://github.com/kb2vhn), not the Iron Signal Systems organization. **No license has been selected**. Public GitHub visibility is not an open-source license or permission to reuse the code.
+This is an independent, personally maintained project hosted under [kb2vhn](https://github.com/kb2vhn). **No license has been selected**. Public GitHub visibility is not an open-source license or permission to reuse the code.
 
 This is a design-stage project. Do not interpret repository scaffolding or passing document checks as evidence of an operational OS.

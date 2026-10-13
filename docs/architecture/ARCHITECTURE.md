@@ -1,11 +1,11 @@
 # New Hope — Rust Microkernel OS Architecture Baseline
 
 **Status:** Agreed architectural direction; implementation not started
-**Version:** 0.3 (repository-scaffold edition)
+**Version:** 0.4 (repository publication and documentation consolidation)
 **Recorded:** 2026-10-13
 **Project codename:** `new-hope`
 **Canonical GitHub repository:** https://github.com/kb2vhn/new-hope.git
-**Repository publication:** Local scaffold prepared; GitHub write access was denied (403) on 2026-10-13. No remote commit has been made.
+**Repository publication:** Initial documentation scaffold published on 2026-10-13 (initial commit `9b35020`); changes remain subject to explicit authorization and verification.
 **Purpose:** Preserve the design decisions made before development so a later session begins from the same architecture instead of revisiting it.
 
 > **Scope of agreement:** The microkernel boundary, UMI-as-NGFW principle, named-call communication model, and intent to start extremely small are agreed. Detailed APIs, algorithms, binary wire layouts, toolchains, and boot components are *not* approved simply because examples appear in this document.
@@ -14,7 +14,7 @@
 
 - **Codename:** New Hope (`new-hope` in paths and tooling).
 - **Repository:** `kb2vhn/new-hope`.
-- **Documentation location:** `docs/architecture/ARCHITECTURE.md` in the prepared project scaffold.
+- **Documentation location:** `docs/architecture/ARCHITECTURE.md` is the single authoritative architecture baseline.
 - **Repository policy:** This scaffold was requested for the personal GitHub repository. Future remote writes require explicit approval for their particular scope.
 
 ## 1. Project goal and target machine
@@ -216,4 +216,4 @@ These are important, but **not blockers** to preserving the design:
 
 ---
 
-*Baseline created from the architecture discussion on 2026-10-13. Nothing in this document indicates a working kernel. The local scaffold is prepared but remote publication has not succeeded.*
+*Baseline created from the architecture discussion on 2026-10-13 and published in the personal repository. Nothing in this document indicates a working kernel.*
