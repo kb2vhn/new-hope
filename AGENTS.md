@@ -17,7 +17,7 @@ This is New Hope's independent engineering, architecture, security, testing, and
 ## Authorization, code and performance
 
 - For each operation check *actual* calling identity, endpoint, operation, delegated authority, resource limits and relevant state; make ambiguity, malformed requests, stale/expired handles, missing policy or policy-service failure fail closed.
-- App-created child execution cannot increase authority. A user-requested launch is separate and independently authorized; do not confuse `spawn` shortcuts with authentication. Protect against privileged helpers laundering caller permissions.
+- App-created children may have **equal or reduced authority, never greater**. The kernel owns immutable parent-child lineage: no child takeover, detachment, orphaning, self-reparenting or supervisor adoption. If a parent exits, crashes or is killed, terminate its **entire descendant tree** and revoke descendant UMI authority before further execution. An independently authorized system service has its own designated protected supervisor, not a lifecycle escape for an app-created child. A user-requested launch is separate and independently authorized; do not confuse `spawn` shortcuts with authentication. Protect against privileged helpers laundering caller permissions.
 - Put only minimal verifiable mechanisms in kernel. Prefer bounded simple modules, explicit interfaces, minimal dependencies, and measured costs. Source code should remain auditable on constrained physical targets.
 - Prefer freestanding Rust for kernel (`no_std` as appropriate), tightly scoped documented `unsafe`, clear architecture-specific modules, explicit ownership/invariants, deterministic builds and no placeholder success. Do not select Rust stable/nightly, bootloader crates or OS ABI on assumption.
 - Avoid surprise allocations, implicit background workers, unnecessary copies or proxy hops, unsafe DMA, unbounded logging or lock contention in critical paths. An optimized data path must preserve the authorization contract.
@@ -38,7 +38,7 @@ This is New Hope's independent engineering, architecture, security, testing, and
 3. **G2:** memory, exception and interrupt mechanisms; memory protection tests.
 4. **G3:** two isolated user-mode tasks and controlled kernel entry.
 5. **G4:** authorized and denied UMI request/reply with bounded audit.
-6. **G5:** service restart, revocation, stale handles, malformed/oversized requests.
+6. **G5:** service restart, revocation, stale handles, malformed/oversized requests; parent death cascades to all descendants without orphaning/reparenting.
 
 Do **not** claim boot implies isolation, IPC implies authorization, documentation checks imply a kernel test, or QEMU behavior implies physical hardware support. Record `NotTested`, `Partial`, `Failed`, `Passed` distinctly and preserve failed runs. For negative tests specify exact threat, expected denial, actual result, platform and limits. Do not perform real NVMe writes, irreversible firmware/key changes, or physical-board provisioning without a separate approved plan.
 

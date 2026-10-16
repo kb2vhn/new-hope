@@ -26,7 +26,7 @@ Typed/named IPC between isolated callers; operation-specific allow and deny befo
 
 ### G5 — Recovery and revocation
 
-Kill/restart a service; stale authority denied, failures bounded, malformed/oversized messages rejected, policy revocation honored. **Pass:** repeatable negative tests, no convenient bypass or fail-open.
+Kill/restart a service; stale authority denied, failures bounded, malformed/oversized messages rejected, policy revocation honored. Verify kernel-enforced process lineage: equal-authority children work, parent termination (exit, crash, forced kill) terminates all descendants, and detachment/reparenting or supervisor adoption fails. **Pass:** repeatable negative tests, no orphaned descendants or remaining descendant authority, no convenient bypass or fail-open.
 
 ## Later separately approved milestones (sequence to refine)
 

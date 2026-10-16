@@ -9,7 +9,8 @@
 | Portable kernel | Abstract interrupt/page-map interfaces; planned ARM64 board and bring-up | G1 and later |
 | Scheduler | Algorithm, SMP, interrupt preemption, priority inversion, freeze implementation | G2+ |
 | UMI | Syscall ABI, typed envelope, versioning, endpoint naming/handles, revocation, safe fast paths | G3–G5 |
-| Policy | Rule matching/precedence representation, atomic install, delegation of child strict-subset rights, user-intended execution authorization | G3–G5 |
+| Policy | Rule matching/precedence representation, atomic install, equal-or-reduced child authority, dynamic revocation, user-intended execution authorization | G3–G5 |
+| Process lifecycle | Kernel-owned immutable parent/descendant identity, transitive death handling, in-flight UMI requests, and no adoption by privileged supervisors | G3–G5 |
 | User input | Trusted authentication UI, session focus, HID capture/accessibility, clipboard and screen capture | Later |
 | Filesystem | On-disk format, directory entry rights, ACL inheritance details, rename/hardlinks/symlinks, file execute inheritance | Later |
 | Private files | Metadata visibility without leaking content; parent ownership, creator rights, admin takeover atomicity | Later |

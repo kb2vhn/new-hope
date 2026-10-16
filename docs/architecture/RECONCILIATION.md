@@ -6,7 +6,7 @@
 | --- | --- | --- | --- |
 | CPU/host | x86-64 IdeaPad described as development host | Workstation builds; x86-64 QEMU then IdeaPad; later ARM64; one portable OS | README, ARCHITECTURE, ROADMAP |
 | UMI | Mandatory NGFW-like IPC boundary | Policy/ACL enforcement engine, explicit denies, authenticated identities, bounded operations; no application-specialized logic | ADR-0002, ADR-0003 |
-| Child execution | Delegation undecided | App-created children have strictly reduced delegated authority; user-requested program launch has independently policy-checked authority, not the executor's full authority | ADR-0003 |
+| Child execution | Delegation undecided | App-created children may have equal or reduced authority, never more; immutable kernel-owned lineage enforces termination of all descendants when a parent ends; user-requested launches are independently policy checked and protected services cannot adopt application children | ADR-0003 |
 | Networking | Undesigned | Stateful firewall integrated in isolated networking service; kernel forbids bypass; no inline TLS interception | ADR-0004 |
 | Browser/HID | Undesigned | Browser internals stay browser-owned; kernel/resource-service handles process boundaries and device access | ADR-0005 |
 | Files | Filesystem permissions unspecified | Owner distinct from creator; no world class; Traverse/List/Read separated; private-by-default; administrative takeover auditable | ADR-0006 |
@@ -33,7 +33,7 @@
 - Hold activation/release authority and the precise hold scope for creator-versus-owner paths remain open.
 - Whether SecAuditor's word “execute” means running held executables or only directory Traverse is open; file execution is **not assumed**.
 - Backup enrollment inheritance, snapshot/retention formats, restore collision policy, and how system-state recovery treats user data outside scoped backups remain implementation decisions subject to the established principles.
-- The exact strict-child-authority representation, independently authorized user launch, service-broker attribution and revocation contracts need engineering validation.
+- The exact equal-or-reduced child-authority representation, independently authorized user launch, kernel-owned process-tree termination ordering, service-broker attribution and revocation contracts need engineering validation.
 - The password verifier design, recovery secrets and keys, filesystem format, UMI ABI and policy storage are not frozen.
 - Boot integrity on a specific IdeaPad or ARM64 board is unverified. A self-reported software checksum is not a hardware root of trust.
 

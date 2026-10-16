@@ -45,7 +45,7 @@
 
 ### UMI and process authority — ADR-0003
 
-UMI evaluates authenticated source, destination, operation, applicable ACL/policy and state, with explicit-deny precedence and fail-closed authorization. **Services own application-specific object checks.** Policy revisions are built and validated outside the kernel and installed atomically. Application-created children have **strictly lower delegated authority** than their parent; independently authorized user-requested executable launches do not receive arbitrary privileges from the prompt. Neither UMI nor the kernel parses browser extensions or TLS payloads.
+UMI evaluates authenticated source, destination, operation, applicable ACL/policy and state, with explicit-deny precedence and fail-closed authorization. **Services own application-specific object checks.** Policy revisions are built and validated outside the kernel and installed atomically. Application-created children may have **equal or lower effective authority**, never higher; kernel-maintained lineage forbids self-promotion, detachment and reparenting, and parent termination terminates every descendant. Separately authorized system services belong to protected supervisors, not an application child's escape route; independently authorized user-requested executable launches do not receive arbitrary privileges from the prompt. Neither UMI nor the kernel parses browser extensions or TLS payloads.
 
 ### Native network security — ADR-0004
 
