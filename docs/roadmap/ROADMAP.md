@@ -1,44 +1,45 @@
-# New Hope — Incremental Roadmap
+# New Hope — Acceptance roadmap
 
-**As of 2026-10-13: no gate has been completed.** Gates describe acceptance criteria, not calendar commitments. A later gate never retroactively turns an earlier failure into a pass.
+**As of 2026-10-16, no executable acceptance gate is complete.** Project is documentation-only. Passing scaffold checks does **not** mean the kernel boots or protections work. Gates are acceptance criteria, not calendar promises.
 
-## G0 — Host and toolchain inventory
+## First implementation: x86-64 QEMU, then Lenovo IdeaPad
 
-- Record precise IdeaPad CPU, RAM, firmware/UEFI state, host OS, disk layout and NVMe model.
-- Record Rust toolchain availability, QEMU, UEFI firmware/OVMF and debugger options.
-- Establish reproducible build commands and a non-destructive virtual-disk path.
-- **Pass:** committed inventory (sanitized of personal secrets) and a chosen, documented first boot/test method.
+### G0 — Workstation and target inventory
 
-## G1 — First kernel boot
+Inventory actual workstation Rust/Cargo/QEMU/firmware availability, x86-64 cross-build path, serial debugging, selected boot process, plus non-destructive IdeaPad CPU/UEFI/disk characteristics. Identify preservation/rollback plans; do not modify the IdeaPad disk in G0. **Pass:** documented actual environment, build and test plan, tool versions, confirmed non-destructive image path.
 
-- Minimal freestanding x86-64 Rust kernel; deterministic serial output and controlled halt in QEMU.
-- No network stack, filesystem, GUI or required heap.
-- **Pass:** exact build command, tool versions, boot command and captured serial output; repeatable clean boot/halt.
+### G1 — Deterministic kernel boot
 
-## G2 — Kernel foundations
+Minimal freestanding Rust x86-64 kernel prints build/version and serial message in QEMU, then halts safely. No storage, network, UMI services, file ACLs or required heap. **Pass:** reproducible build, boot command, captured serial output, safe halt.
 
-- Exception handling and minimal interrupt setup; inspect memory map; initial page/mapping control.
-- **Pass:** targeted positive/negative validation without confusing exceptions with UMI requests.
+### G2 — Core protected mechanisms
 
-## G3 — Isolation and controlled entry
+Exception/interrupt receipt, initial memory map/protected mappings, bounded early resource handling. **Pass:** observed positive and negative exception/memory behavior, no false UMI claim.
 
-- Two distinct user-mode address spaces; kernel-authenticated caller identity and message entry primitive.
-- **Pass:** attempted forbidden kernel/private-memory access fails; valid controlled entry succeeds.
+### G3 — Independent user-mode tasks
 
-## G4 — UMI authorization proof
+Two protected address spaces, controlled kernel entry, kernel-sourced caller identity. **Pass:** valid entry works; unauthorized kernel or other-process memory access fails.
 
-- Authorized named request/reply between isolated callers; operation-specific denial before delivery.
-- **Pass:** permit, deny, bounded audit and continued recipient operation are all observed.
+### G4 — UMI authorization
 
-## G5 — Failure, recovery and revocation
+Typed/named IPC between isolated callers; operation-specific allow and deny before delivery; bounded audit. **Pass:** direct allow/deny/forged-source tests with recipient healthy, documented costs.
 
-- Service death/restart, old-handle invalidation, malformed/oversized request rejection, bounded failure delivery.
-- **Pass:** repeatable negative tests with explicit authority and recovery behavior.
+### G5 — Recovery and revocation
 
-## Out of initial scope
+Kill/restart a service; stale authority denied, failures bounded, malformed/oversized messages rejected, policy revocation honored. **Pass:** repeatable negative tests, no convenient bypass or fail-open.
 
-Networking, POSIX compatibility, real NVMe drivers, filesystem, shell UI, graphical desktop, real-hardware disk modifications, and a broad scheduler or policy language. They require separate, explicitly approved milestones.
+## Later separately approved milestones (sequence to refine)
 
-## Evidence record
+1. **OS service and account foundation:** supervision, trusted authentication, multiuser sessions, process creation/delegation, UMI policy administration, native command executor, basic bundled utilities.
+2. **Storage and file authorization:** drivers, filesystem, object IDs, owner/creator, independent directory/file ACLs, journaled ownership recovery, file utility acceptance.
+3. **HID and UI:** trusted input, focused dispatch, raw monitoring denial, screen/clipboard capability separation.
+4. **Networking:** protected drivers, IP networking, isolated stateful bidirectional firewall, performance and no-bypass tests; then remote logging and optional TLS diagnostic key export.
+5. **Security operations:** native protected journals and retention, DR/OPS/SecAuditor identities, restricted `eu -`, high-confidence account-wide lockdown, frozen-task attribution, integrity recovery.
+6. **Continuity and protection:** owner opt-in backup and original-location restore, system-state recovery, litigation holds, SecAuditor discovery, boot RECOVERY and platform trust/rollback defenses.
+7. **Portability and applications:** physical IdeaPad acceptance followed by ARM64 bring-up on explicitly selected hardware, then editors, Go/Rust application runtime, optional interpreters and other facilities.
 
-Each gate report should capture: date, revision, host/guest platform, tool versions, exact commands, expected result, actual result, failures/limitations, and acceptance decision. `NotTested` is not `Passed`.
+The sequencing above is **not** an assertion that final protected account recovery can be secure before verified boot/secure persistent state. Each later gate must declare dependencies, environmental limits and adversarial tests before implementation begins.
+
+## Reports and change control
+
+Write reproducible test records under `docs/validation/` with `NotTested`, `Partial`, `Failed` or `Passed`; capture exact revision, host/guest, tool versions, commands, expected/observed results, denial tests and known limitations. Never relabel an earlier failed attempt as passed. No real-disk/destructive work, GitHub branch/write, or hardware-key provisioning without explicit approval.

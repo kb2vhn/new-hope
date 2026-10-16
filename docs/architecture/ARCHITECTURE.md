@@ -1,219 +1,103 @@
-# New Hope — Rust Microkernel OS Architecture Baseline
+# New Hope — Architecture baseline
 
-**Status:** Agreed architectural direction; implementation not started
-**Version:** 0.4 (repository publication and documentation consolidation)
-**Recorded:** 2026-10-13
-**Project codename:** `new-hope`
-**Canonical GitHub repository:** https://github.com/kb2vhn/new-hope.git
-**Repository publication:** Initial documentation scaffold published on 2026-10-13 (initial commit `9b35020`); changes remain subject to explicit authorization and verification.
-**Purpose:** Preserve the design decisions made before development so a later session begins from the same architecture instead of revisiting it.
+- **Version:** Proposed v0.5 documentation reconciliation (2026-10-16)
+- **Status:** Agreed design principles; **no kernel implementation or accepted runtime test**
+- **Repository:** https://github.com/kb2vhn/new-hope
+- **Authoritative decisions:** [Decision register](DECISIONS.md) and linked ADRs
+- **Open implementation choices:** [OPEN-QUESTIONS.md](OPEN-QUESTIONS.md)
 
-> **Scope of agreement:** The microkernel boundary, UMI-as-NGFW principle, named-call communication model, and intent to start extremely small are agreed. Detailed APIs, algorithms, binary wire layouts, toolchains, and boot components are *not* approved simply because examples appear in this document.
+> New Hope is an independent, multiuser, portable Rust **microkernel operating system**, not a Linux/FreeBSD distribution, MINIX fork or mandated POSIX clone. **x86-64 is first** (QEMU, then available Lenovo IdeaPad); ARM64 is intended later. One OS, separate architecture-specific mechanisms.
 
-## 0. Project identity
+## 1. Original decisions preserved (DEC-001 through DEC-010)
 
-- **Codename:** New Hope (`new-hope` in paths and tooling).
-- **Repository:** `kb2vhn/new-hope`.
-- **Documentation location:** `docs/architecture/ARCHITECTURE.md` is the single authoritative architecture baseline.
-- **Repository policy:** This scaffold was requested for the personal GitHub repository. Future remote writes require explicit approval for their particular scope.
-
-## 1. Project goal and target machine
-
-Build an independent operating system from the ground up in **Rust**, inspired by **MINIX-style microkernel isolation**, but **not** a MINIX fork or a requirement to emulate UNIX/POSIX. The user wants direct architectural control, a small initial system, fault containment, and deliberate engineering rather than a large framework or feature-heavy base.
-
-Initial development machine:
-
-- Lenovo IdeaPad with an Intel Core i3 (10th-generation family, model to verify).
-- 12 GB RAM (verify at first working session).
-- Planned Samsung 970 500 GB NVMe upgrade, replacing the original ~256 GB NVMe.
-- Host OS and toolchain **not yet confirmed**.
-- Initial kernel boots and tests in **QEMU**; physical IdeaPad boot comes **later** and must not overwrite the host disk as an early test.
-- Target CPU architecture: **x86-64**.
-
-## 2. Ratified architectural decisions
-
-### DEC-001 — A genuine Rust microkernel
-
-The goal is a freestanding Rust OS with a deliberately small privileged kernel and isolated external components. Starting from a kernel capable only of booting, reporting status, and halting is acceptable. Do **not** quietly substitute a monolithic Linux/FreeBSD-based design.
-
-### DEC-002 — Mechanisms owned by the microkernel
-
-The following belong **inside** the microkernel:
-
-- CPU scheduling, context switching, and core execution/thread mechanisms.
-- Hardware exception and interrupt handling and dispatch.
-- Physical and virtual memory management, including address-space protection and mapping enforcement.
-- Core IPC transport, endpoint/capability enforcement, and mandatory UMI enforcement.
-
-The microkernel uses ordinary internal Rust/function calls for **internal** operations. CPU hardware interrupts enter through architectural interrupt paths; they are not fabricated as network requests.
-
-### DEC-003 — UMI is universal at the kernel boundary
-
-**Unified Message Interface (UMI)** is the mandatory communication boundary for **anything outside the microkernel** that communicates with:
-
-1. the microkernel, or
-2. any other external service/process.
-
-This includes user applications, process-management services, storage and filesystem services, user-space drivers, terminal services, service management, and all other external components as they are built.
-
-**The invariant:** No external component can bypass UMI authorization to invoke a privileged kernel action, interact with another isolated component, or establish shared communication resources.
-
-UMI is a *network-call-like semantic model*, **not** a requirement to run TCP/IP/HTTP, do network I/O, or serialize human-readable strings for intra-machine messages. Local transport should be efficient kernel-mediated IPC.
-
-### DEC-004 — UMI is an OS-level next-generation firewall
-
-UMI must behave like a **next-generation firewall at the operating-system communication boundary**, not like an unrestricted event bus. For each controlled request, the kernel enforcement mechanism should be able to evaluate:
-
-- **Authenticated caller identity:** derived from kernel-owned execution context, not blindly trusted from request payload.
-- **Destination:** named service or kernel-facing operation, ultimately resolved to an authorized endpoint.
-- **Operation/method:** what action is requested, not merely whether an endpoint exists.
-- **Permission/capability:** caller's authority for this destination and operation.
-- **Context/session state:** request-response correlation and permitted state transitions where relevant.
-- **Resource controls:** message bounds and applicable quotas/rate controls.
-- **Decision/accounting:** allow, deny, relevant failure, and appropriate audit information.
-
-**Default deny.** Name discovery alone is not permission. Malformed messages and absent/invalid authority are rejected. There must be no implicitly trusted user-space bypass.
-
-The resemblance to an NGFW is the **security model**. UMI need not deeply parse every service-specific payload inside the kernel: the kernel applies a small, verifiable protocol/authorization contract, while individual services perform their own resource-level authorization (for example, permission to read a particular file).
-
-### DEC-005 — Separate minimal kernel enforcement from user-space policy administration
-
-UMI's **enforcement/data plane** lives inside the microkernel and must stay minimal, bounded, and predictable. **Policy administration/control plane** belongs in a protected external service. The control plane may create and validate policy revisions, but cannot bypass the kernel's enforcement checks.
-
-Loss or restart of the user-space policy service must not mean fail-open. An existing validated, installed enforcement policy continues operating, and unapproved changes are denied. Bootstrap authority must be explicit and minimal—not a blanket allow-all state.
-
-### DEC-006 — Named, structured operations for all external calls
-
-Callers conceptually use names such as:
-
-- `kernel.memory` / `map`
-- `kernel.task` / a defined task operation
-- `system.process` / `spawn`
-- `system.storage` / `open`
-- `system.terminal` / `write`
-
-These are **illustrative names only**, not finalized API names or an approved message schema.
-
-Each operation should have defined identity, destination, method, version/compatibility contract, bounded arguments, and an outcome. Support for request-response and asynchronous notifications should be designed intentionally. The precise binary encoding, syscall ABI, endpoint-handle strategy, and timeouts are **open**.
-
-A single **logical protocol** does not require a single hardware syscall or textual name lookup on every request. An initial authorized name resolution may produce a bounded endpoint/capability handle for efficient subsequent requests, subject to revocation and re-authorization rules.
-
-### DEC-007 — User-space services remain protected and independently supervised
-
-System-level services and hardware drivers are intended to be isolated **outside** the microkernel where practical, inspired by MINIX. A process manager, terminal, storage driver, service registry, and policy manager are eventual services, not things to implement immediately.
-
-A failed service should be containable where technically possible. Service restart is **not** automatically equivalent to safe recovery: open handles, device state, pending operations, permissions, and client retries must be accounted for.
-
-### DEC-008 — Authorized shared memory is an optimization, not a bypass
-
-For bulk data later, explicitly granted shared-memory mappings may avoid extra copies. All creation, delegation, mapping, and revocation of such access must be authorized by the microkernel under UMI rules. Shared memory does not create an uninspected path for new permissions or service control.
-
-### DEC-009 — Security and observability are designed into the mechanism
-
-UMI should allow auditing of denied and relevant allowed communication, identity, operation, destination, policy decision, and correlated failures. Logging must itself be bounded and must not create an uncontrolled denial-of-service path. Do not assume a security policy protects against a compromised microkernel, DMA without adequate isolation, hardware compromise, or a legitimately authorized but malicious service.
-
-### DEC-010 — Start extremely small; preserve the final architecture
-
-The first result is a booting kernel in a virtual machine—not a complete OS, POSIX layer, driver stack, or elaborate policy engine. Temporary bootstrap shortcuts must be explicitly marked and removed before claiming meaningful process isolation or mandatory UMI enforcement.
-
-## 3. Kernel and UMI boundary rules
-
-| Interaction | Expected mechanism |
+| Original decision | Retained invariant |
 | --- | --- |
-| Kernel scheduler calls kernel-internal memory function | Normal internal kernel call, **not** UMI |
-| CPU interrupt delivered to kernel | Hardware exception/interrupt path, **not** UMI request |
-| User process asks kernel to map memory | Defined system entry, then **UMI authorization**, then kernel memory mechanism |
-| User process sends request to another user process | **UMI-authorized IPC** via the kernel |
-| External process asks process manager to spawn another process | **UMI-authorized service operation**; process manager invokes kernel primitives through UMI |
-| External storage service requests privileged device operation | **UMI-authorized kernel operation**, with controlled hardware access |
-| Two user services share memory | **UMI-authorized grant/mapping**, bounded scope and lifetime |
-| A service crashes and is restarted | Supervisor service controls restart; old permissions/handles must not silently grant replacement process access |
+| DEC-001 — Real Rust microkernel | Small freestanding privileged kernel and isolated external services |
+| DEC-002 — Kernel mechanism ownership | Scheduling/context switch, exception/interrupt entry, physical/virtual memory mapping/protection, core IPC and UMI checks are kernel mechanisms |
+| DEC-003 — Mandatory UMI | External-to-kernel and external-to-external communication requests cross a kernel-authorized UMI boundary; internal kernel functions and CPU interrupts are not UMI requests |
+| DEC-004 — Firewall-inspired UMI | Kernel-authenticated caller, destination, operation, capability/context, bounds, default deny, audit; application payload interpretation stays outside kernel |
+| DEC-005 — Split policy plane | Small enforcement engine inside microkernel; protected user-space policy administration; no fail-open if administrator service disappears |
+| DEC-006 — Named typed calls | Logical named service/operation model over efficient IPC, **not** a requirement for TCP/IP or human-readable wire data |
+| DEC-007 — Isolated services | Service registry, process-manager policy, storage/filesystem, drivers, terminal and supervision outside kernel where feasible; restart/state need explicit contracts |
+| DEC-008 — Authorized shared memory | Explicit grant, mapping, revocation; zero-copy does not become a bypass |
+| DEC-009 — Security observability | Bounded event/audit generation and honest threat limits; no promise against compromised kernel or uncontrolled DMA |
+| DEC-010 — Incremental proof | First prove QEMU boot/halt; then memory isolation; then UMI allow/deny; then restart/revocation—not a complete OS on first boot |
 
-**Important distinction:** UMI is mandatory at the trust boundary; it is not the mechanism by which internal kernel functions call one another. Hardware interrupts are events handled by kernel code and may later produce UMI notifications to drivers.
+**ADR-0001 and ADR-0002 remain accepted.** Later ADRs provide additional product and security requirements, not evidence that those mechanisms exist today.
 
-## 4. Conceptual message flow (NOT a frozen ABI)
+## 2. Architectural responsibility map
 
-Example: application calls a terminal service.
+| Component / boundary | Owner of policy or mechanism |
+| --- | --- |
+| CPU, process address spaces, interrupts, kernel entry, primitive IPC | Privileged microkernel |
+| UMI identities, cross-boundary authorization and authorized shared resources | Microkernel enforcement; protected external policy controller |
+| Process launch/sessions/user authentication | Protected user-space identity/session/process services and UMI checks |
+| File ACL, owner/creator, backup and hold metadata | Protected filesystem and dedicated backup/hold services |
+| Mandatory firewall and network connection state | Protected networking service; kernel-enforced driver/device isolation |
+| HID delivery, raw input, clipboard/screen capture | Protected input/display/device services under UMI policy |
+| Browser extensions, webpage origin and DOM, cookies | **Browser alone**; OS does not understand extensions |
+| TLS and SSH plaintext/keys | Application or protocol implementation; administrator-authorized diagnostic export only |
+| Journal append, segment sealing, retention, integrity verification | Protected logging/journal services; kernel enforces service authority |
+| HIDS correlation/alerts | Isolated analyzer, not automatic universal policy writer |
+| Normal administration, DR, OPS, SecAuditor, RECOVERY | Separate fixed local identities and narrow authorized operations |
 
-1. Caller asks for permission to access a named terminal operation (or uses a previously authorized, valid endpoint).
-2. Kernel obtains the **actual caller identity** from its execution context.
-3. Kernel UMI enforcement checks the endpoint, operation, capability, state, and bounds.
-4. If denied: no delivery; emit bounded decision/audit information and return a defined failure.
-5. If allowed: deliver a structured message to the isolated destination service.
-6. Service executes its own domain checks, sends a correlated response, and may ask the kernel to perform privileged work through UMI.
-7. Kernel checks each crossing of the external/kernel boundary. Internal privileged kernel implementation remains direct.
+## 3. New accepted direction by domain
 
-Example logical envelope (documentation only):
+### UMI and process authority — ADR-0003
 
-```text
-source:       [kernel-authenticated identity]
-destination:  system.terminal
-operation:    write
-request_id:   1042
-interface:    terminal.v1
-payload:      [bounded binary data]
-authority:    [validated endpoint/capability]
-```
+UMI evaluates authenticated source, destination, operation, applicable ACL/policy and state, with explicit-deny precedence and fail-closed authorization. **Services own application-specific object checks.** Policy revisions are built and validated outside the kernel and installed atomically. Application-created children have **strictly lower delegated authority** than their parent; independently authorized user-requested executable launches do not receive arbitrary privileges from the prompt. Neither UMI nor the kernel parses browser extensions or TLS payloads.
 
-This is **not** a decision to use JSON, string parsing, a specific envelope order, or a literal `authority` field that the caller can forge.
+### Native network security — ADR-0004
 
-## 5. Threat model: first pass
+The bidirectional stateful firewall operates in a **protected user-space networking service**. There is no normal-network bypass via raw sockets, drivers or helper services; an OS networking permission does not override a firewall destination deny. Packet traffic has no administrative policy authority. The firewall fails closed, operates with bounded resources, and must not require a per-packet security-service round trip. TLS/SSH interception is not built into the firewall. Participating TLS libraries may allow separately authorized and logged session-secret export.
 
-**Design for:** compromised or defective user-space service; forged caller-provided identity; unauthorized service discovery/invocation; malformed or oversized IPC messages; denial-of-service via request floods; stale endpoints after restart; accidental service privilege escalation; illegal shared-memory grants.
+### Applications and human-interface devices — ADR-0005
 
-**Do not claim solved yet:** malicious kernel, insecure firmware/boot chain, side channels, physical attacks, unsafe DMA without IOMMU mediation, imperfect per-resource security in a driver, or hard real-time guarantees. Those require further architecture and test work.
+OS process/resource isolation is distinct from browser/application logic. Focused input works normally; global keyboard monitoring, raw devices, screen capture and system-wide clipboard monitoring are **separately authorized**, not inherited from ordinary app permissions. Input authentication must have a trusted path. Hardware isolation/DMA capabilities vary by target.
 
-**Bootstrapping tension to solve explicitly:** if default deny applies to everything, the initial trusted services still need narrowly scoped, kernel-installed bootstrap identities/capabilities. Define a tiny, auditable initial bootstrap sequence rather than disabling UMI until startup completes.
+### Filesystem — ADR-0006
 
-## 6. Incremental implementation and acceptance gates
+Owner and creator are distinct; objects normally inherit **parent-designated ownership**. A creator in someone else's directory receives no automatic ownership or file content access. Directories distinguish `Traverse`, `List`, `Create`, entry changes and ACL management; files distinguish `Read`, `Write`, `Execute` and ACL management. **Traverse != List != file Read**. Permission inheritance is scoped per operation with explicit deny precedence. There is no world class or `777` equivalent. A user can modify an owned object's ACL only for authorized groups they belong to; the `users` group requires administrative assignment. An administrator may enumerate authorized file metadata, not private contents by default; takeover and added rights require separately journaled administration.
 
-These are target gates, **not** a sprint schedule or a promise that they can all be completed in one sitting.
+### Users, special accounts and containment — ADR-0007
 
-**G0 — Environment inventory (no disk changes).** Record actual IdeaPad CPU, firmware mode, installed host OS, RAM, disk layout, Rust toolchain, and QEMU/OVMF availability. Decide how to preserve the host and how to boot virtual images.
+Multiuser/least-privilege sessions; `doas`-style narrow elevation; timed `eu -` sessions (10-minute default, user may shorten under global max, `end` or `exit`). OPS, DR and SecAuditor are **specific local accounts, not assignable roles or groups**. They use distinct protected credentials, generic password-policy rejection and narrow, non-overlapping authorities. High-confidence privileged compromise locks the **base user account** and freezes all attributable processes including elevated/child tasks. DR alone reviews/recovers security-locked identities, viewing **only locked account process metadata**. Neither DR nor ordinary admin receives broad file-content or process-memory access.
 
-**G1 — Kernel boot.** A freestanding x86-64 Rust kernel starts in QEMU, prints deterministic diagnostics (serial preferred), identifies its build/version, and halts in a controlled way. No filesystem, network, user-space services, or heap required.
+### Logs and journals — ADR-0008
 
-**G2 — Kernel mechanisms.** Establish and test a minimal memory map, protected mappings, exception handling, interrupt primitives, and the foundations necessary for isolated execution. Keep privileged functionality narrow.
+System logging is native, independent of HIDS and network availability; forward securely later. Security journals are append-only and sealed with hash-linked integrity, immutable after commit, and independently verifiable where possible. Segment rollover **7 days or 128 MB**, default retention **90 days**, extended by DR; incidents/holds prevent premature retirement. Proposed anomaly threshold **10%**, changeable only by DR, with its measurement definition still open. High-risk activity is subject to attributable containment, not simple rollover-triggered lockout. Failed journal integrity suspends privileged security changes without unnecessarily stopping safe normal operations.
 
-**G3 — Isolated tasks and UMI entry.** Launch at least two independent user-mode address spaces. Define a minimal kernel entry/exit contract and caller identity mechanism. Verify a user component cannot directly access privileged state or another task's private memory.
+### Backups and litigation holds — ADR-0009 / ADR-0010
 
-**G4 — UMI allow/deny.** Caller A sends an authorized named-operation request to isolated Service B; B returns a correlated response. Attempt an unauthorized operation; kernel denies before delivery; denial is auditable; Service B stays alive.
+Owner controls normal backup enrollment for private `/home/<user>` files. Shared `/projects` coverage and system-state recovery have their own policy. `system.backup` is a protected **noninteractive service** holding a reconciled inventory of eligible file IDs, owners/creators, **original paths** and metadata; operators authorized by OPS initiate jobs but do not inherit data reads. User-scoped backup selects owner-enrolled files, system mode selects eligible coverage. Restoration is separate authority restricted to authorized original location, with conflict prevention. An active administrative/litigation hold overrides opt-out and preserves scoped files/versions. SecAuditor may discover and read **only held objects**; hold activation/release authority and actual file Execute scope are not decided.
 
-**G5 — Recovery and revocation.** Kill/restart B; demonstrate stale endpoint rejection, bounded error delivery to A, explicit new authorization, and safe continuation. Add malformed and oversized message tests.
+### Boot, restricted RECOVERY and persistent state — ADR-0011
 
-The **first session** is G0 followed, if the actual host supports it, by the smallest steps toward G1. Do not skip the isolation and authorization prerequisites and then incorrectly declare UMI implemented.
+Report assurance classes: Development, Software-Verified, and Hardware-Rooted as available. Verified boot is a target, not a blocker for G1. Installer generates a **one-time 26-character random alphanumeric** code for a local, boot-menu `RECOVERY` environment. RECOVERY may reset OPS/DR/SecAuditor credentials and create an administrator, **never unlock a SECURITY_LOCKED account**, delete incidents or act as universal root. Only DR reviews/clears security-locked accounts. Hold/lock/journal security state persists across reboot, while frozen process RAM does not necessarily survive; affected processes must not auto-restart.
 
-## 7. Explicitly not decided yet
+### Native command environment — ADR-0012
 
-These are important, but **not blockers** to preserving the design:
+A lightweight command executor with arguments, quoting, `&&`/`||`, bundled filesystem tools and optional external shells. Per-user non-executable configuration covers aliases and preferences; protected system policy establishes security ceilings. The command executor contains no general security bypass or browser-specific functionality.
 
-- Final product/OS name (the project codename `new-hope` and personal repository are established).
-- Host OS on the upgraded IdeaPad; partitioning/installation approach.
-- Specific bootloader/UEFI implementation, Rust toolchain versions, and use of stable versus nightly features.
-- Source directory structure, exact syscall ABI, encoding, interface definitions, and handle sizes.
-- Capability ownership, inheritance, revocation and delegation mechanics.
-- Service namespace hierarchy, name resolution details, and interface version-negotiation rules.
-- Exact UMI control-plane policy format and how compiled policy is delivered atomically to kernel.
-- Detailed audit storage, overflow strategy, log persistence, and policy recovery after reboot.
-- Scheduler algorithm, SMP/multicore support, driver safety/IOMMU plan, and devices supported beyond early serial diagnostics.
-- POSIX compatibility (not presumed); actual networking or remote UMI endpoints (not required for initial OS).
+## 4. Threat and assurance boundaries
 
-**Change discipline:** If we revisit an agreed rule, record a new numbered decision, its motivation, security/performance implications, and what it supersedes. Do not silently rewrite the baseline.
+**Targets:** forged caller identities, unauthorized IPC/device access, over-privileged children/helpers, unauthorized keyboard monitoring, network policy bypass, unjournaled privileged file changes, silent admin account recovery, backup-restoration privilege laundering, and premature retirement of held security records.
 
-## 8. Next-session resume checklist
+**Not guaranteed by design alone:** a malicious/compromised privileged kernel, hostile firmware, an OS-level device without hardware DMA isolation, physical key extraction, application-internal browser extension compromise, all covert exfiltration over permitted connections, arbitrary data encryption-key recovery, or a working OS before implementation and tests. Hardware-backed boot/anti-rollback guarantees are target dependent.
 
-1. Read this entire baseline before making code changes.
-2. Confirm architecture has **not** been silently changed to monolithic/POSIX or an ordinary unrestricted IPC bus.
-3. Verify physical IdeaPad inventory and whether Samsung 970 500 GB NVMe is installed.
-4. Confirm the development host OS and available build/QEMU tools, without assuming FreeBSD or Linux.
-5. Work **only** on G0 and the smallest G1 boot experiment unless the user explicitly expands scope.
-6. Preserve separate source repository discipline; **do not** create/push/merge GitHub changes without explicit user authorization.
-7. Record actual test results and update this baseline with approved design decisions only.
+## 5. Implementation and milestone discipline
 
-## 9. Short handoff for a new chat
+Use [ROADMAP.md](../roadmap/ROADMAP.md). Initial gates G0–G5 are still:
 
-> We are designing a fresh x86-64 Rust OS for my Intel Core i3 Lenovo IdeaPad, planned with a Samsung 970 500 GB NVMe upgrade. We chose a MINIX-inspired microkernel. CPU scheduling, interrupts/exceptions, memory management/protection, and kernel IPC belong inside the microkernel. **Everything outside the microkernel** that communicates with the kernel or other external components must use **UMI (Unified Message Interface)**: named network/RPC-like calls over efficient kernel IPC. UMI is envisioned as an **OS-level next-generation firewall**: mandatory kernel enforcement of caller identity, endpoint, operation, capabilities, state, resource limits, default deny, and audit. User-space control plane manages policies; kernel data plane enforces them. No UMI bypass, including shared-memory grants. Hardware interrupts and internal kernel function calls are not RPC. Keep user-space drivers/services isolated, as in MINIX. Start extremely small in QEMU, then test actual hardware later. Do not conflate architectural intent with implemented isolation or select unstated APIs/toolchains. Read `docs/architecture/ARCHITECTURE.md` and begin by inventorying the actual host and working toward a simple boot/serial/halt test. Do not change GitHub without permission.
+- **G0:** real environment inventory; nondestructive QEMU and physical-target planning.
+- **G1:** deterministic freestanding Rust x86-64 QEMU boot, serial diagnostic, controlled halt.
+- **G2:** memory mapping and exception/interrupt primitives.
+- **G3:** two isolated user-mode address spaces, controlled kernel entry and authenticated origin.
+- **G4:** authorized and denied UMI messages with bounded audit.
+- **G5:** failure/restart, stale handle, malformed message and revocation negative tests.
 
----
+Later, separate acceptance gates will cover user/session authority, native executor, storage/ACLs, HID, protected networking/firewall, journal integrity, backups, litigation holds, recovery and ARM64. **No gate has been completed.** Do not introduce an entire security administration stack into the first serial-print kernel.
 
-*Baseline created from the architecture discussion on 2026-10-13 and published in the personal repository. Nothing in this document indicates a working kernel.*
+## 6. Decision discipline
+
+`DECISIONS.md` is the ADR index; `OPEN-QUESTIONS.md` carries unresolved format/algorithm/platform choices. If a decision changes, record reasons, tradeoffs, tests, approval and supersession; do not silently edit accepted guarantees. No GitHub write without the owner's explicit approval of its scope. Do not cross-reference unrelated projects in this personal repository.

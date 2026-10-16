@@ -1,19 +1,39 @@
-# Architecture Decision Register
+# New Hope — Architecture decision register
 
-Architecture decisions are durable and deliberately reviewable. The 2026-10-13 baseline records agreed principles as DEC-001 through DEC-010 in [ARCHITECTURE.md](ARCHITECTURE.md). ADRs below summarize the two binding architectural boundaries for future contributors.
+**Implementation status:** design-only. Each ADR records accepted intent and explicitly **unselected engineering details**; acceptance of a direction is not approval of a concrete interface or working code.
 
-| ID | Date | Status | Decision |
-| --- | --- | --- | --- |
-| [ADR-0001](ADR-0001-MICROKERNEL-BOUNDARY.md) | 2026-10-13 | Accepted | Rust microkernel owns scheduling, interrupts, memory mechanisms, primitive IPC |
-| [ADR-0002](ADR-0002-UMI-ENFORCEMENT.md) | 2026-10-13 | Accepted | Universal, mandatory, NGFW-like UMI authorization for external communication |
+## Decision maturity labels
 
-## Decision change procedure
+Use these three labels consistently throughout architecture, examples, roadmap, and implementation planning:
 
-1. Explain the existing contract and why changing it is necessary.
-2. Describe the options, security/performance effects, fallback and failure behavior.
-3. Obtain explicit project-owner approval for the architectural change.
-4. Add a numbered ADR using the same headings as the records above.
-5. Mark the earlier ADR as **Superseded** and link to the replacement, rather than deleting the history.
-6. Update the architecture baseline, roadmap, related tests and component documentation together.
+- **Accepted:** An architectural requirement or direction approved for New Hope. It is binding at the stated abstraction level, but does not assert any implementation exists or freeze unspecified algorithms, interfaces, encodings, or hardware assumptions.
+- **Open:** A substantive design or engineering choice that has not been approved. Resolve, analyze consequences, and document it before implementing the affected feature; an Open item does not block unrelated earlier milestones.
+- **Illustrative:** A nonbinding example, such as a command spelling, configuration path, sample ACL, policy entry, diagram, message format, or output. It communicates intent and must never be treated as a frozen API, on-disk format, or test specification.
 
-An exploratory sketch, message example, or chat suggestion is not an accepted ABI or design decision. Track unresolved choices in [OPEN-QUESTIONS.md](OPEN-QUESTIONS.md).
+An ADR may contain **Accepted** principles, **Open** mechanisms, and **Illustrative** examples at the same time. Decisions are refined as engineering progresses, with explicit approval and recorded validation.
+
+| ID | Decision | Status |
+| --- | --- | --- |
+| [ADR-0001](ADR-0001-MICROKERNEL-BOUNDARY.md) | Kernel scheduling/memory/interrupt/IPC boundary | Accepted (2026-10-13) |
+| [ADR-0002](ADR-0002-UMI-ENFORCEMENT.md) | Universal mandatory UMI authorization | Accepted (2026-10-13) |
+| [ADR-0003](ADR-0003-UMI-POLICY-AND-EXECUTION.md) | Firewall-like ACL policy, delegated authority, execution contexts | Accepted direction (2026-10-16) |
+| [ADR-0004](ADR-0004-PROTECTED-NETWORK-FIREWALL.md) | Protected native networking firewall | Accepted direction (2026-10-16) |
+| [ADR-0005](ADR-0005-APPLICATION-HID-AND-DEVICE-BOUNDARIES.md) | Browser/application responsibility, protected HID/device | Accepted direction (2026-10-16) |
+| [ADR-0006](ADR-0006-FILESYSTEM-OWNERSHIP-AND-ACL.md) | Owner/creator, independent file/dir ACLs | Accepted direction (2026-10-16) |
+| [ADR-0007](ADR-0007-IDENTITIES-PRIVILEGE-AND-LOCKDOWN.md) | Least privilege, OPS/DR/SecAuditor, frozen security locks | Accepted direction (2026-10-16) |
+| [ADR-0008](ADR-0008-LOGGING-AND-SECURITY-JOURNALS.md) | Native logs, protected journals, retention, anomalies | Accepted direction (2026-10-16) |
+| [ADR-0009](ADR-0009-BACKUP-AND-RESTORE-AUTHORITY.md) | Scoped backup, operators, original-location restore | Accepted direction (2026-10-16) |
+| [ADR-0010](ADR-0010-LITIGATION-HOLDS-AND-SECURITY-AUDITOR.md) | Holds and hold-only auditor visibility | Accepted direction (2026-10-16) |
+| [ADR-0011](ADR-0011-VERIFIED-BOOT-RECOVERY-AND-SECURITY-STATE.md) | Boot assurance, 26-char RECOVERY, persistent security state | Accepted direction (2026-10-16) |
+| [ADR-0012](ADR-0012-NATIVE-COMMAND-AND-CONFIGURATION.md) | Native prompt, base utilities, constrained rc | Accepted direction (2026-10-16) |
+
+Original `ARCHITECTURE.md` **DEC-001–DEC-010** refer to the original kernel/UMI baseline; they remain logically accepted. Later ADRs add scope rather than retroactively claiming the first two ADRs included it.
+
+## Change discipline
+
+1. Explain the existing contract and proposed difference, including security, performance and failure behavior.
+2. Separate accepted principles from ABI, format, algorithms and implementation choices not yet ratified.
+3. Obtain explicit user approval for architectural changes, and **separate approval for GitHub writes**.
+4. Add/modify an ADR; preserve and mark earlier decisions as superseded rather than silently deleting design history.
+5. Keep `ARCHITECTURE.md`, `OPEN-QUESTIONS.md`, roadmap, component readmes and tests consistent.
+6. Do not claim code, test, or hardware support from documentation-only checks.

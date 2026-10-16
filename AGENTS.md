@@ -1,143 +1,64 @@
-# New Hope — Agent and Contributor Rules
+# New Hope — Agent and contributor engineering contract
 
-## Purpose and precedence
+This is New Hope's independent engineering, architecture, security, testing, and change-control rulebook. **Architecture documents are requirements, not claims that working security or an operating system exists.** Before material work read `README.md`, `docs/architecture/ARCHITECTURE.md`, `docs/architecture/DECISIONS.md`, `docs/architecture/OPEN-QUESTIONS.md`, `docs/roadmap/ROADMAP.md`, `docs/development/VALIDATION.md`, and the relevant component README.
 
-This file governs coding agents, reviewers, automation, and human contributions to **New Hope**. It is New Hope's independent engineering, documentation, security, testing, and change-control contract.
+## Binding system design
 
-Before a material change read, at minimum:
+- **One independent Rust microkernel OS**, x86-64 QEMU/IdeaPad first, ARM64 later. Not a Linux/FreeBSD distribution, MINIX fork or assumed POSIX clone.
+- Privileged kernel owns execution/scheduling, CPU interrupt/exception entry, physical/virtual memory mechanisms and isolation, primitive IPC, and **mandatory UMI enforcement**. Kernel internal calls/CPU interrupts are not UMI RPCs.
+- Every external-to-kernel and external-to-external privileged request goes through the logical named, typed **UMI** authorization boundary. UMI is **a small, kernel-enforced policy/ACL engine**, not unrestricted IPC, textual TCP/IP RPC, a centralized proxy, or a browser-aware parser.
+- Default deny; authenticated kernel-owned identity; explicit deny precedence; bounded operations, handles, messages and audit; no bypass via shared memory, device access, raw networking, child/helper escalation or optimized hot paths. A service name grants no authority by itself.
+- External protected services administer policies, files/ACLs, drivers, networking, user sessions, account recovery, logging, shell and backup. Do not drag application parsers, filesystem path ACL evaluation, TLS inspection or policy compiler into kernel.
+- Native stateful firewall is **mandatory in the isolated networking service**, independent of general UMI network permission. No unnecessary packet round trips or silent fail-open if firewall enforcement dies.
+- Browser extensions, webpage origins and browser credentials belong to the **browser**, not UMI. HID/global keyboard recording, screen capture, clipboard monitoring and input injection require separately authorized OS capability.
+- User/file/admin/DR/OPS/SecAuditor/RECOVERY rights are separate and narrowly scoped. A filesystem admin is not an automatic content reader, a backup operator is not a file owner, and DR is not general root. Respect ADR-0006 through ADR-0011.
+- Root authority never justifies bypassing an enforced security lock, protected journal, hold, or independent service boundary. Where hardware trust is absent, **disclose the real assurance limit**.
 
-- `README.md`
-- `docs/architecture/ARCHITECTURE.md`
-- `docs/architecture/DECISIONS.md`
-- `docs/architecture/OPEN-QUESTIONS.md`
-- `docs/roadmap/ROADMAP.md`
-- `docs/development/VALIDATION.md`
-- The local component `README.md`, when present.
+## Authorization, code and performance
 
-Architecture decisions and explicit user direction outrank examples, scaffolding and convenient implementation choices. If implementation and documentation conflict, **report the conflict**. Do not quietly rewrite the design.
+- For each operation check *actual* calling identity, endpoint, operation, delegated authority, resource limits and relevant state; make ambiguity, malformed requests, stale/expired handles, missing policy or policy-service failure fail closed.
+- App-created child execution cannot increase authority. A user-requested launch is separate and independently authorized; do not confuse `spawn` shortcuts with authentication. Protect against privileged helpers laundering caller permissions.
+- Put only minimal verifiable mechanisms in kernel. Prefer bounded simple modules, explicit interfaces, minimal dependencies, and measured costs. Source code should remain auditable on constrained physical targets.
+- Prefer freestanding Rust for kernel (`no_std` as appropriate), tightly scoped documented `unsafe`, clear architecture-specific modules, explicit ownership/invariants, deterministic builds and no placeholder success. Do not select Rust stable/nightly, bootloader crates or OS ABI on assumption.
+- Avoid surprise allocations, implicit background workers, unnecessary copies or proxy hops, unsafe DMA, unbounded logging or lock contention in critical paths. An optimized data path must preserve the authorization contract.
 
-## Governing principles
+## Security-state protections
 
-> **New Hope is a genuine x86-64 Rust microkernel operating-system project, not a Linux/FreeBSD distribution, MINIX fork, or automatic POSIX clone.**
+- Filesystem: independent directory Traverse/List/Create and file Read/Write/Execute; explicit ACLs; parent-designated owner and distinct creator; **no world-access permission or chmod 777**. File owners may grant ordinary group access only to their groups; assigning to special `users` requires administration. Ordinary users cannot `chown`. Admin content access requires journaled takeover + grants, not implicit read.
+- Explicit narrow elevation (`doas`-like) and time-bounded `eu -`; session idle limit capped by system configuration; user configuration cannot broaden it.
+- High-confidence administrative security lockdown affects base identity and all attributable tasks including elevated processes, **freezing** rather than silently logging out. DR recovery never auto-resumes suspicious frozen tasks. DR can inspect only processes of security-locked accounts.
+- Dedicated OPS, DR, SecAuditor, boot-only RECOVERY are accounts, **not ordinary assignable groups/roles**. Generic protected password-policy errors; no cross-account credential reuse. Boot RECOVERY cannot unlock an incident-locked identity; only DR reviews it.
+- Security journals are append-only, verified where possible, sealed and subject to retention/holds; never edit historical accepted entries. Log failures and limitations, not an invented success. Journal threshold comparison basis is **open** even though its initial value is 10%.
+- Backup, restore, system-state recovery and administrative/litigation holds have distinct authorization. No general file-read privilege is implied by initiating backup/recovery or administering a hold. Preserve original paths/metadata and independently authorize restore.
 
-> **UMI is mandatory at every external/kernel and external/external communication boundary.**
+## Implementation gates and tests
 
-> **UMI is a security enforcement point modeled after an NGFW, not merely a transport or event bus.**
+1. **G0:** read-only inventory of workstation and IdeaPad environment; non-destructive QEMU plan.
+2. **G1:** freestanding x86-64 QEMU kernel prints deterministic serial message and halts safely.
+3. **G2:** memory, exception and interrupt mechanisms; memory protection tests.
+4. **G3:** two isolated user-mode tasks and controlled kernel entry.
+5. **G4:** authorized and denied UMI request/reply with bounded audit.
+6. **G5:** service restart, revocation, stale handles, malformed/oversized requests.
 
-> **The microkernel owns scheduling, interrupt/exception handling, memory mechanisms and protection, IPC primitives, and mandatory UMI enforcement.**
+Do **not** claim boot implies isolation, IPC implies authorization, documentation checks imply a kernel test, or QEMU behavior implies physical hardware support. Record `NotTested`, `Partial`, `Failed`, `Passed` distinctly and preserve failed runs. For negative tests specify exact threat, expected denial, actual result, platform and limits. Do not perform real NVMe writes, irreversible firmware/key changes, or physical-board provisioning without a separate approved plan.
 
-> **Internal kernel function calls and CPU hardware interrupt delivery are not UMI requests.**
+## Decision maturity and documentation discipline
 
-> **No external component gains authority through a service name alone.**
+- **Accepted:** Binding architectural direction, not proof of an implementation or a commitment to unspecified interfaces.
+- **Open:** Unresolved engineering question; decide and record it before implementing the affected mechanism, without blocking unrelated earlier gates.
+- **Illustrative:** Nonbinding command, path, ACL, schema, diagram or pseudocode; never silently promote it into an ABI or standard.
+- A document may contain all three kinds of material. Keep them distinguishable and require explicit review before an Open or Illustrative design becomes Accepted.
 
-> **No unauthorized bypass exists through shared memory, device access, direct mapping, or fast paths.**
+## Documentation and repository hygiene
 
-> **Describe planned mechanisms as planned, not as implemented or tested.**
+- Keep `README.md` brief, detailed architectural design under `docs/architecture`, gate planning under `docs/roadmap`, and actual procedures/tests under `docs/development`/`docs/validation`.
+- Maintain ADR history. New decisions require rationale, options, tradeoffs, risks, tests and explicit owner approval. Do not silently alter accepted boundaries. Examples are not frozen syscall names/JSON schemas.
+- No claims of implemented UMI, signed boot, log verification, HIDS, filesystem security or application compatibility without observed results.
+- No secrets, recovery codes, private keys, account verifiers, traces with personal data, raw disk images, Rust `target/`, editor swaps, or machine secrets in repo. No references to unrelated projects in this personal repository.
+- No license has been selected. Do not add one without approval.
 
-## Boundary and ownership rules
+## GitHub change control — strict
 
-Kernel-owned mechanisms:
+**Approval for one action is not approval for subsequent actions.** Without explicit user authorization for the **specific** remote write do not commit, push, merge, open/close a PR, create/delete branches or tags, change repository/ruleset settings, license or publish releases. Inspection, drafts, reviewed patches and uncommitted local preparation are permitted.
 
-- CPU scheduling, context switching, execution/thread primitives.
-- Exception and interrupt receipt/dispatch.
-- Physical/virtual memory mechanisms, mappings, address-space isolation.
-- IPC transport, endpoint identity/capability checks, and minimal UMI enforcement.
-
-Outside the microkernel when eventually implemented:
-
-- Service discovery and policy administration; process-management policy.
-- User-space device drivers, filesystem/storage services, terminal and shell.
-- Recovery/supervision, applications, and operator tools.
-
-External requests **to the kernel** and external requests **to other external components** use one logical named, typed, bounded UMI contract. Local transport can be compact kernel IPC; a network stack is not necessary. Avoid repeatedly resolving service names on hot paths if protected handles can be used without weakening revocation or authorization.
-
-Do **not** place a full policy compiler, arbitrary application parser, filesystem permission logic, or service-manager policy engine inside the kernel merely because UMI controls the entry point.
-
-## UMI security requirements
-
-- Default deny: no caller access without valid, established authority.
-- Derive caller identity from kernel-controlled state, not caller-supplied text.
-- Check destination endpoint, operation, capability, message bounds and applicable state before delivery.
-- Make ambiguous, malformed, expired, revoked, or unavailable authority fail closed.
-- Identify bootstrap capabilities explicitly; never bootstrap by globally disabling enforcement.
-- Service-name lookup is discovery, not authorization.
-- Treat restarts, stale handles, replays and timeouts as security-relevant state transitions.
-- Authorize shared-memory grants, mapping, delegation, and revocation through UMI; sharing bytes must not silently grant new control authority.
-- Emit bounded audit decisions without allowing the audit path to block or exhaust the kernel indefinitely. Audit durability and overflow policy are still **open**.
-- A compromised kernel, unsafe DMA, or legitimately authorized malicious service is **not claimed solved**.
-
-## Rust and implementation rules
-
-- Prefer small auditable crates/modules and explicit interfaces. Keep public interfaces minimal.
-- Kernel code is expected to be freestanding; do not casually introduce `std`, OS host syscalls, or host runtime assumptions into the target kernel.
-- Minimize `unsafe`; document each unsafe block's invariants and ownership, and test boundaries where feasible.
-- No undefined behavior, uncontrolled allocation, surprise background threads, or hidden service-to-service calls for convenience.
-- Use clear Rust types for identities, handles, operations, results and errors when they are designed; do not invent permanent ABI details prematurely.
-- Keep architecture-dependent mechanisms separated from architecture-independent policy/protocol contracts.
-- Do not add dependency-heavy frameworks or bootloader crates until their use is justified and recorded in a decision.
-- Do not fabricate a functioning build or placeholder kernel to make CI appear green.
-
-## Scope and acceptance gates
-
-Read `docs/roadmap/ROADMAP.md` before starting. Work sequentially:
-
-1. **G0:** inventory real IdeaPad environment without destructive changes.
-2. **G1:** QEMU boot + deterministic serial message + controlled halt.
-3. **G2:** kernel memory/interrupt mechanisms and protections.
-4. **G3:** separate user-mode address spaces and a controlled kernel entry.
-5. **G4:** authorized UMI request/response, denied operation, bounded audit.
-6. **G5:** service failure/restart, revocation and malformed-message resilience.
-
-A kernel boot is **not** proof of memory isolation. An IPC round trip is **not** proof of mandatory UMI authorization. A test that runs under QEMU is **not** a bare-metal hardware support claim. Keep these distinctions explicit.
-
-## Failure and testing discipline
-
-- Define expected and negative behavior before implementing privileged functionality.
-- Prefer deterministic, reproducible tests; add regression tests for defects.
-- Record the exact environment, command, binary revision, observed output, and known limitations.
-- Keep `NotImplemented`, `NotTested`, `Failed`, and `Passed` separate.
-- Never rewrite a failed test into success after a later rerun; preserve both attempts.
-- In early stages, first prove code builds/boots under the **actual selected** toolchain and boot path, then add targeted negative security tests.
-- Do not test on real NVMe hardware until disk-preservation and recovery procedures are documented and expressly approved.
-- Document what was **not** validated. Do not claim protection from attacks the test did not attempt.
-
-## Documentation and decisions
-
-- Architecture changes require an ADR explaining context, choice, alternatives, consequences, risks, and impact on existing decisions.
-- Never silently move scheduling, memory mechanisms, or interrupts out of the kernel; never relax UMI coverage or default deny as an implementation shortcut.
-- Keep `README.md` brief; detailed architecture, testing, and roadmap belong under `docs/`.
-- Distinguish illustrative operation names and message examples from ratified ABI or encoding decisions.
-- Do not select a license, stable/nightly toolchain, bootloader, or host OS implicitly.
-- Update the affected documentation in the same change set as the behavior.
-
-## GitHub and change-control rules
-
-An approval for one action is not general authorization for later actions.
-
-Without explicit user authorization for the specific action, agents must not:
-
-- Commit, push, merge, or open/close a PR.
-- Create, delete, or change remote branches or tags.
-- Change branch protection, rulesets, permissions, repository settings, or licensing.
-- Publish a release or delete repository content.
-
-Local inspection, drafts, patches and uncommitted working-tree preparation are allowed unless otherwise directed. Before a proposed commit review `git status --short`, `git diff --check`, `git diff --stat`, and the full diff; stage files intentionally and inspect the staged diff. Do not use broad staging on a tree with build outputs or test artifacts.
-
-Never claim a GitHub write succeeded based on a local file, tool request, or optimistic status. Verify the remote object after a successful write. When integration permissions deny a write, stop and report the denial.
-
-## Repository hygiene and review
-
-Do not commit private keys, tokens, local disk images, NVMe dumps, user-specific machine state, huge kernel/QEMU traces, Rust `target/`, build outputs, editor swapfiles, or machine-specific configuration. Do not import unrelated code, configuration, or third-party materials without proper rights and explicit justification.
-
-Review every proposed change for:
-
-- What exact boundary changed? Could any external communication avoid UMI?
-- Was actual kernel-owned identity checked? Are names being mistaken for authority?
-- Are permissions, failure states, timeouts and resources bounded?
-- Was `unsafe` used and justified? Are interrupts/preemption handled safely?
-- Did a bootstrap workaround become a persistent security hole?
-- Are tests representative? Are failed tests recorded?
-- Do docs still distinguish the agreed architecture from unimplemented behavior?
-- Was the particular GitHub write approved and verified?
-
-**Final rule:** prefer a tiny, explicit, verifiably correct mechanism over a large subsystem that appears functional but hides privilege, policy, or failure behavior.
+Before an approved commit, inspect `git status --short`, `git diff --check`, `git diff --stat`, the complete diff and staged paths. Never stage unreviewed artifacts en masse. After an approved remote action, fetch/verify the resulting object and commit. If a tool denies a write, report it; do not assert success. The smallest correct mechanism beats an oversized superficially functional subsystem.
